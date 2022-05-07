@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
@@ -17,13 +18,20 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 const fetchData = async () => {
     try {
         await client.connect();
+        const inventory = client.db('RahmanWarehouse').collection('Inventory');
+
+        app.post('/auth', (req, res) => {
+            const user = req.body;
+            const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
+            res.send({ accessToken });
+        });
 
         app.get('/inventory', async (req, res) => {
             const { search_id } = req.query;
 
             if (search_id) {
                 const query = { "_id": ObjectId(search_id) };
-                const item = await client.db('RahmanWarehouse').collection('Inventory').findOne(query);
+                const item = await inventory.findOne(query);
                 if (item) {
                     res.send(item);
                 } else {
@@ -31,14 +39,22 @@ const fetchData = async () => {
                 }
             } else {
                 const start = parseInt(req.query?.start);
-                const inventory = await client.db('RahmanWarehouse').collection('Inventory').find({}).toArray();
+                const items = await inventory.find({}).toArray();
 
                 if (start) {
-                    res.send(inventory.slice(start, start + 6));
+                    res.send(items.slice(start, start + 6));
                 } else {
-                    res.send(inventory);
+                    res.send(items);
                 }
             }
+        });
+
+        app.post('/add-item', async (req, res) => {
+            await inventory.insertOne(req.body);
+            res.send({
+                header: 'New Item Added!',
+                body: 'Please go to the My Items page to see all the items added by you.'
+            });
         });
     } finally {
 
