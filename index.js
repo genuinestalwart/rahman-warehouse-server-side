@@ -21,7 +21,6 @@ const verifyJWT = async (req, res, next) => {
 
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
-            console.log('forbidden access');
             return res.status(403).send({ message: 'forbidden access' });
         }
 
@@ -60,6 +59,14 @@ const fetchData = async () => {
                     res.send(items);
                 }
             }
+        });
+
+        app.post('/change-quantity', async (req, res) => {
+            const { _id, increaseBy } = req.body;
+            const query = { "_id": ObjectId(_id) };
+            const update = { $inc: { "quantity": parseInt(increaseBy) } };
+            await inventory.findOneAndUpdate(query, update);
+            res.send({});
         });
 
         app.post('/add-item', async (req, res) => {
