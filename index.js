@@ -10,6 +10,7 @@ require('dotenv').config();
 app.use(express.json());
 app.use(cors());
 
+// Verifying and validating JWT
 const verifyJWT = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -42,6 +43,7 @@ const fetchData = async () => {
             const { search_id } = req.query;
 
             if (search_id) {
+                // Search for a specific item
                 const query = { "_id": ObjectId(search_id) };
                 const item = await inventory.findOne(query);
                 if (item) {
@@ -50,6 +52,7 @@ const fetchData = async () => {
                     res.send({});
                 }
             } else {
+                // Search for a few items
                 const start = parseInt(req.query?.start);
                 const items = await inventory.find({}).toArray();
 
@@ -61,6 +64,7 @@ const fetchData = async () => {
             }
         });
 
+        // Change the quantity value of an item
         app.post('/change-quantity', async (req, res) => {
             const { _id, increaseBy } = req.body;
             const query = { "_id": ObjectId(_id) };
@@ -69,6 +73,7 @@ const fetchData = async () => {
             res.send({});
         });
 
+        // Add a new item
         app.post('/add-item', async (req, res) => {
             await inventory.insertOne(req.body);
             res.send({
@@ -77,12 +82,14 @@ const fetchData = async () => {
             });
         });
 
+        // Delete an item
         app.delete('/delete-item', async (req, res) => {
             const query = { "_id": ObjectId(req.body.itemId) };
             await inventory.deleteOne(query);
             res.send({});
         });
 
+        // Fetch only those items, which are added by the user, based on the email address
         app.get('/my-items', verifyJWT, async (req, res) => {
             const decodedEmail = req.decoded.email;
             const queryEmail = req.query.email;
