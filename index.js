@@ -10,6 +10,25 @@ require('dotenv').config();
 app.use(express.json());
 app.use(cors());
 
+const verifyJWT = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+
+    const token = authHeader.split((' '))[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            console.log('forbidden access');
+            return res.status(403).send({ message: 'forbidden access' });
+        }
+
+        req.decoded = decoded;
+        next();
+    });
+};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.CLUSTER_URL}/RahmanWarehouse?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
@@ -19,12 +38,6 @@ const fetchData = async () => {
     try {
         await client.connect();
         const inventory = client.db('RahmanWarehouse').collection('Inventory');
-
-        app.post('/auth', (req, res) => {
-            const user = req.body;
-            const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
-            res.send({ accessToken });
-        });
 
         app.get('/inventory', async (req, res) => {
             const { search_id } = req.query;
@@ -56,6 +69,20 @@ const fetchData = async () => {
                 body: 'Please go to the My Items page to see all the items added by you.'
             });
         });
+
+        app.get('/my-items', verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const queryEmail = req.query.email;
+
+            if (queryEmail === decodedEmail) {
+                const query = { "email": queryEmail };
+                const items = await inventory.find(query).toArray();
+                res.send(items);
+            } else {
+                res.status(403).send({ message: 'forbidden access' });
+            }
+
+        });
     } finally {
 
     }
@@ -66,6 +93,13 @@ fetchData().catch(console.dir);
 // Creating APIs
 app.get('/', (req, res) => {
     res.send('Hello world!');
+});
+
+// Creating JWT
+app.post('/auth', (req, res) => {
+    const user = req.body;
+    const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
+    res.send({ accessToken });
 });
 
 // Listening to port
