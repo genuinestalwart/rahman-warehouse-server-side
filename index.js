@@ -77,6 +77,12 @@ const fetchData = async () => {
             });
         });
 
+        app.delete('/delete-item', async (req, res) => {
+            const query = { "_id": ObjectId(req.body.itemId) };
+            await inventory.deleteOne(query);
+            res.send({});
+        });
+
         app.get('/my-items', verifyJWT, async (req, res) => {
             const decodedEmail = req.decoded.email;
             const queryEmail = req.query.email;
